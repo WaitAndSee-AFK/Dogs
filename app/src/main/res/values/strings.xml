@@ -1,3 +1,5 @@
 <resources>
     <string name="app_name">Dogs</string>
+    <string name="next_image">Next image</string>
+    <string name="error_with_internet">Error with internet</string>
 </resources>
