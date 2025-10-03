@@ -2,51 +2,70 @@ package com.example.dogs
 
 import android.os.Bundle
 import android.util.Log
+import android.view.View
+import android.widget.Button
+import android.widget.ImageView
+import android.widget.ProgressBar
+import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
+import androidx.lifecycle.Observer
+import androidx.lifecycle.ViewModelProvider
+import com.bumptech.glide.Glide
 import org.json.JSONObject
 import java.io.BufferedReader
 import java.io.InputStream
 import java.io.InputStreamReader
+import java.lang.Exception
 import java.net.HttpURLConnection
 import java.net.URL
 import kotlin.concurrent.thread
 
-private const val BASE_URL = "https://dog.ceo/api/breeds/image/random"
+private const val TAG = "MainActivity"
+private lateinit var viewModel: MainViewModel
+
 class MainActivity : AppCompatActivity() {
+    private lateinit var imageView: ImageView
+    private lateinit var progressBar: ProgressBar
+    private lateinit var button: Button
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
-        loadDogImage()
+        initViews()
+        viewModel = ViewModelProvider(this).get(MainViewModel::class.java)
+        viewModel.loadDogImage()
+        viewModel.isError.observe(this, Observer<Boolean> { err ->
+            if (err) {
+                Toast.makeText(
+                    this,
+                    R.string.error_with_internet,
+                    Toast.LENGTH_SHORT
+                ).show()
+            }
+        })
+        viewModel.isLoading.observe(this, Observer<Boolean> { loading ->
+            if (loading) {
+                progressBar.visibility = View.VISIBLE
+            } else {
+                progressBar.visibility = View.GONE
+            }
+        })
+        viewModel.dogImage.observe(this, Observer<DogImage> { image ->
+            Glide.with(this)
+                .load(image.message)
+                .into(imageView)
+        })
+        button.setOnClickListener {
+            viewModel.loadDogImage()
+        }
     }
 
-    private fun loadDogImage() {
-        thread {
-            try {
-                val url: URL = URL(BASE_URL)
-                val urlConnection: HttpURLConnection = url.openConnection() as HttpURLConnection
-                val inputStream: InputStream = urlConnection.inputStream
-                val inputStreamReader: InputStreamReader = InputStreamReader(inputStream)
-                val bufferedReader: BufferedReader = BufferedReader(inputStreamReader)
-
-                val data = StringBuilder()
-                var result: String
-                do {
-                    result = bufferedReader.readLine()
-                    if (result != null) data.append(result)
-                } while (result != null)
-
-                val jsonObject = JSONObject(data.toString())
-                val message = jsonObject.getString("message")
-                val status = jsonObject.getString("status")
-                val dogImage = DogImage(message, status)
-
-                Log.d("MainActivity", dogImage.toString())
-            } catch (e: Exception) {
-                Log.d("MainActivity", e.toString())
-            }
-        }
+    private fun initViews() {
+        imageView = findViewById(R.id.imageView)
+        progressBar = findViewById(R.id.progressBar)
+        button = findViewById(R.id.button)
     }
 }
